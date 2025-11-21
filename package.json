@@ -2,6 +2,14 @@
   "name": "rhf-sync-url",
   "version": "1.0.0",
   "description": "Sync React Hook Form state with URL Query Params automatically.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Abhi1264/rhf-sync-url.git"
+  },
+  "homepage": "https://github.com/Abhi1264/rhf-sync-url#readme",
+  "bugs": {
+    "url": "https://github.com/Abhi1264/rhf-sync-url/issues"
+  },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -30,8 +38,16 @@
     "sync",
     "persistence"
   ],
-  "author": "https://github.com/Abhi1264",
+  "author": {
+    "name": "Abhi1264",
+    "url": "https://github.com/Abhi1264"
+  },
   "license": "ISC",
+  "files": [
+    "dist",
+    "README.md",
+    "logo.svg"
+  ],
   "devDependencies": {
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/react": "^14.1.2",

@@ -18,10 +18,64 @@ interface UseSyncUrlOptions<T = Record<string, unknown>> {
   adapter: RouterAdapter; // Adapter implementation for accessing and mutating search params
   debounce?: number; // Time in ms to debounce URL updates (default: 500)
   maxUrlLength?: number; // Maximum URL length before truncation (default: 2000)
+  excludeFields?: string[]; // Field names to exclude from URL sync (for sensitive data)
 }
 
 // Maximum safe URL length (browsers typically support 2000-8000 chars, but 2000 is safer)
 const DEFAULT_MAX_URL_LENGTH = 2000;
+
+// Common sensitive field names that should trigger warnings in development
+const SENSITIVE_FIELD_PATTERNS = [
+  'password',
+  'pwd',
+  'pass',
+  'secret',
+  'token',
+  'apiKey',
+  'apikey',
+  'auth',
+  'credential',
+  'ssn',
+  'socialSecurity',
+  'creditCard',
+  'cardNumber',
+  'cvv',
+  'cvc',
+  'pin',
+  'ssn',
+  'sin',
+  'accountNumber',
+  'routingNumber',
+  'bankAccount',
+];
+
+/**
+ * Check if a field name matches sensitive patterns and warn in development
+ */
+function warnIfSensitiveField(fieldName: string, excludeFields?: string[]): void {
+  // Only warn in development
+  if (process.env.NODE_ENV !== 'development') {
+    return;
+  }
+
+  // Skip if already excluded
+  if (excludeFields?.includes(fieldName)) {
+    return;
+  }
+
+  const lowerFieldName = fieldName.toLowerCase();
+  const isSensitive = SENSITIVE_FIELD_PATTERNS.some((pattern) =>
+    lowerFieldName.includes(pattern.toLowerCase())
+  );
+
+  if (isSensitive) {
+    console.warn(
+      `[rhf-sync-url] Warning: Field "${fieldName}" may contain sensitive data. ` +
+        `Consider adding it to the excludeFields option to prevent it from being synced to the URL. ` +
+        `URLs are visible in browser history, server logs, and can be easily shared.`
+    );
+  }
+}
 
 /**
  * Safely parse JSON with validation and prototype pollution protection
@@ -138,6 +192,7 @@ export function useSyncUrl<T = Record<string, unknown>>({
   adapter,
   debounce = 500,
   maxUrlLength = DEFAULT_MAX_URL_LENGTH,
+  excludeFields = [],
 }: UseSyncUrlOptions<T>) {
   // Track if it's the initial render
   const firstRender = useRef(true);
@@ -167,13 +222,19 @@ export function useSyncUrl<T = Record<string, unknown>>({
     const restoredValues: Record<string, unknown> = {};
 
     // Rehydrate values from searchParams with safe JSON parsing
+    // Skip excluded fields (they shouldn't be in URL, but if they are, ignore them)
     params.forEach((value, key) => {
+      // Skip excluded fields
+      if (excludeFields.includes(key)) {
+        return;
+      }
       if (value) {
         restoredValues[key] = safeJsonParse(value);
       }
     });
 
     // If any values are present in the query, reset the form to those values
+    // Note: reset() will merge with defaultValues, so excluded fields will keep their defaults
     if (Object.keys(restoredValues).length > 0) {
       isUpdatingFromUrlRef.current = true;
       reset(restoredValues as T);
@@ -189,7 +250,7 @@ export function useSyncUrl<T = Record<string, unknown>>({
     if (firstRender.current) {
       firstRender.current = false;
     }
-  }, [adapter.searchParams, reset]);
+  }, [adapter.searchParams, reset, excludeFields]);
 
   // Effect to update URL query parameters when form state changes (after initial render)
   useEffect(() => {
@@ -208,8 +269,21 @@ export function useSyncUrl<T = Record<string, unknown>>({
       // Clone existing searchParams to preserve unrelated params
       const newParams = new URLSearchParams(adapter.searchParams);
 
+      // First, remove all excluded fields from URL (in case they exist from before)
+      excludeFields.forEach((field) => {
+        newParams.delete(field);
+      });
+
       // Iterate over form values and update corresponding params
       Object.entries(values || {}).forEach(([key, value]) => {
+        // Skip excluded fields - never sync sensitive data to URL
+        if (excludeFields.includes(key)) {
+          return;
+        }
+
+        // Warn in development if field name suggests sensitive data
+        warnIfSensitiveField(key, excludeFields);
+
         if (value === undefined || value === null || value === "") {
           // Remove parameter if the value is empty or undefined
           newParams.delete(key);
@@ -246,5 +320,5 @@ export function useSyncUrl<T = Record<string, unknown>>({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [values, adapter, debounce, maxUrlLength]);
+  }, [values, adapter, debounce, maxUrlLength, excludeFields]);
 }
