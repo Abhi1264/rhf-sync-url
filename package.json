@@ -1,6 +1,6 @@
 {
   "name": "rhf-sync-url",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Sync React Hook Form state with URL Query Params automatically.",
   "repository": {
     "type": "git",
