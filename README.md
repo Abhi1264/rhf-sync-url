@@ -8,15 +8,15 @@ A lightweight React hook that automatically synchronizes [React Hook Form](https
 
 ## Features
 
-- 🔄 **Automatic Synchronization**: Form values are automatically synced with URL query parameters
-- 🔁 **Bidirectional Sync**: URL → Form on mount and URL changes (browser navigation), Form → URL on form changes
-- ⚡ **Debounced Updates**: Configurable debounce to prevent excessive URL updates
-- 🎯 **Framework Agnostic**: Works with React Router, Next.js, and any router that provides URL search params
-- 📦 **TypeScript Support**: Fully typed with TypeScript generics
-- 🪶 **Lightweight**: Minimal dependencies, only requires React and React Hook Form
-- 🔧 **Flexible**: Supports complex values (objects, arrays) via JSON serialization
-- 🔒 **Secure**: Prototype pollution protection and safe JSON parsing
-- ⚠️ **URL Length Protection**: Configurable maximum URL length with warnings
+- **Automatic Synchronization**: Form values are automatically synced with URL query parameters
+- **Bidirectional Sync**: URL → Form on mount and URL changes (browser navigation), Form → URL on form changes
+- **Debounced Updates**: Configurable debounce to prevent excessive URL updates
+- **Framework Agnostic**: Works with React Router, Next.js, and any router that provides URL search params
+- **TypeScript Support**: Fully typed with TypeScript generics
+- **Lightweight**: Minimal dependencies, only requires React and React Hook Form
+- **Flexible**: Supports complex values (objects, arrays) via JSON serialization
+- **Secure**: Prototype pollution protection and safe JSON parsing
+- **URL Length Protection**: Configurable maximum URL length with warnings
 
 ## ⚠️ Security Warning
 
