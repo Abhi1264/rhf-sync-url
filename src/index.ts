@@ -79,11 +79,12 @@ function warnIfSensitiveField(fieldName: string, excludeFields?: string[]): void
 
 /**
  * Safely parse JSON with validation and prototype pollution protection
+ * Supports both base64-encoded JSON (new format) and plain JSON (backward compatibility)
  * Returns unknown to force type checking at call sites
  */
-function safeJsonParse(value: string): unknown {
-  try {
-    const parsed: unknown = JSON.parse(value);
+function JsonParse(value: string): unknown {
+  // Helper function to validate and sanitize parsed JSON
+  const validateAndSanitize = (parsed: unknown): unknown => {
     // Validate that parsed value is a primitive, array, or plain object
     // Reject functions, dates, regexp, etc. that could cause issues
     if (
@@ -129,30 +130,47 @@ function safeJsonParse(value: string): unknown {
     }
     
     return parsed;
+  };
+
+  // First, try base64 decode + JSON parse (new format)
+  try {
+    const decoded = decodeURIComponent(atob(value));
+    const parsed: unknown = JSON.parse(decoded);
+    return validateAndSanitize(parsed);
   } catch {
-    return value;
+    // If base64 decode fails, try direct JSON parse (backward compatibility)
+    try {
+      const parsed: unknown = JSON.parse(value);
+      return validateAndSanitize(parsed);
+    } catch {
+      // If both fail, treat as plain string
+      return value;
+    }
   }
 }
 
 /**
  * Safely serialize a value to string for URL
+ * Objects and arrays are base64-encoded JSON for cleaner URLs
+ * Primitives remain as plain strings
  * Accepts unknown to require type checking
  */
-function safeSerialize(value: unknown): string {
+function Serialize(value: unknown): string {
   // Handle null explicitly (typeof null === "object" in JS)
   if (value === null) {
     return "";
   }
 
-  // Handle primitives
+  // Handle primitives - keep as plain strings (no base64 encoding)
   if (typeof value !== "object") {
     return String(value);
   }
 
-  // Handle arrays
+  // Handle arrays - JSON stringify then base64 encode
   if (Array.isArray(value)) {
     try {
-      return JSON.stringify(value);
+      const json = JSON.stringify(value);
+      return btoa(encodeURIComponent(json));
     } catch (error) {
       // Handle circular references or other serialization errors
       console.warn("Failed to serialize array to URL:", error);
@@ -160,10 +178,11 @@ function safeSerialize(value: unknown): string {
     }
   }
 
-  // Handle plain objects only (exclude Date, RegExp, etc.)
+  // Handle plain objects only (exclude Date, RegExp, etc.) - JSON stringify then base64 encode
   if (Object.prototype.toString.call(value) === "[object Object]") {
     try {
-      return JSON.stringify(value);
+      const json = JSON.stringify(value);
+      return btoa(encodeURIComponent(json));
     } catch (error) {
       // Handle circular references or other serialization errors
       console.warn("Failed to serialize object to URL:", error);
@@ -229,7 +248,7 @@ export function useSyncUrl<T = Record<string, unknown>>({
         return;
       }
       if (value) {
-        restoredValues[key] = safeJsonParse(value);
+        restoredValues[key] = JsonParse(value);
       }
     });
 
@@ -289,7 +308,7 @@ export function useSyncUrl<T = Record<string, unknown>>({
           newParams.delete(key);
         } else {
           // Serialize value safely
-          const stringValue = safeSerialize(value);
+          const stringValue = Serialize(value);
           if (stringValue) {
             newParams.set(key, stringValue);
           } else {

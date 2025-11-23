@@ -951,4 +951,86 @@ describe("useSyncUrl", () => {
     expect(values.email).toBe("test@example.com");
     // Empty string might not be restored (depends on implementation)
   });
+
+  it("should base64 encode objects and arrays in URL", async () => {
+    const { result } = renderHook(() => {
+      const { control, reset, setValue } = useForm({
+        defaultValues: {
+          filters: {},
+          tags: [],
+        },
+      });
+      useSyncUrl({ control, reset, adapter, debounce: 100 });
+      return { control, setValue };
+    });
+
+    await vi.runAllTimersAsync();
+
+    const filterData = { category: "tech", active: true };
+    const tags = ["react", "typescript"];
+
+    act(() => {
+      result.current.setValue("filters", filterData);
+      result.current.setValue("tags", tags);
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+
+    // Check that values in URL are base64 encoded
+    const lastCall =
+      mockSetSearchParams.mock.calls[
+        mockSetSearchParams.mock.calls.length - 1
+      ][0];
+    const filtersValue = lastCall.get("filters");
+    const tagsValue = lastCall.get("tags");
+
+    // Values should be base64 encoded (not plain JSON)
+    expect(filtersValue).not.toBe(JSON.stringify(filterData));
+    expect(tagsValue).not.toBe(JSON.stringify(tags));
+
+    // Verify they are valid base64
+    expect(() => {
+      const decoded = decodeURIComponent(atob(filtersValue!));
+      const parsed = JSON.parse(decoded);
+      expect(parsed).toEqual(filterData);
+    }).not.toThrow();
+
+    expect(() => {
+      const decoded = decodeURIComponent(atob(tagsValue!));
+      const parsed = JSON.parse(decoded);
+      expect(parsed).toEqual(tags);
+    }).not.toThrow();
+  });
+
+  it("should decode base64-encoded values from URL", async () => {
+    const filterData = { category: "tech", active: true };
+    const tags = ["react", "typescript"];
+
+    // Set base64-encoded values in URL (new format)
+    const filtersBase64 = btoa(encodeURIComponent(JSON.stringify(filterData)));
+    const tagsBase64 = btoa(encodeURIComponent(JSON.stringify(tags)));
+
+    mockSearchParams.set("filters", filtersBase64);
+    mockSearchParams.set("tags", tagsBase64);
+
+    const { result } = renderHook(() => {
+      const { control, reset, getValues } = useForm({
+        defaultValues: {
+          filters: {},
+          tags: [],
+        },
+      });
+      useSyncUrl({ control, reset, adapter });
+      return { control, getValues };
+    });
+
+    await vi.runAllTimersAsync();
+
+    const values = result.current.getValues();
+    // Should correctly decode base64 values
+    expect(values.filters).toEqual(filterData);
+    expect(values.tags).toEqual(tags);
+  });
 });

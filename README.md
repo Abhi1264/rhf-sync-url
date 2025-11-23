@@ -14,7 +14,7 @@ A lightweight React hook that automatically synchronizes [React Hook Form](https
 - **Framework Agnostic**: Works with React Router, Next.js, and any router that provides URL search params
 - **TypeScript Support**: Fully typed with TypeScript generics
 - **Lightweight**: Minimal dependencies, only requires React and React Hook Form
-- **Flexible**: Supports complex values (objects, arrays) via JSON serialization
+- **Flexible**: Supports complex values (objects, arrays) via base64-encoded JSON serialization
 - **Secure**: Prototype pollution protection and safe JSON parsing
 - **URL Length Protection**: Configurable maximum URL length with warnings
 
@@ -226,7 +226,7 @@ A React hook that synchronizes React Hook Form state with URL query parameters b
 2. **On URL Changes**: When URL changes externally (browser back/forward, manual navigation), form values are updated (excluding `excludeFields`)
 3. **On Form Changes**: Updates the URL query parameters with current form values (debounced, excluding `excludeFields`)
 4. **Empty Values**: Automatically removes query parameters when form values are empty, null, or undefined
-5. **Complex Values**: Objects and arrays are serialized as JSON in the URL
+5. **Complex Values**: Objects and arrays are serialized as base64-encoded JSON in the URL (primitives remain as plain strings)
 6. **Security**:
    - Prototype pollution protection and safe JSON parsing are built-in
    - Excluded fields are never synced to URL and are removed if they exist
@@ -239,9 +239,10 @@ A React hook that synchronizes React Hook Form state with URL query parameters b
 On the first render, the hook:
 
 1. Reads all query parameters from the URL
-2. Attempts to parse JSON values (for objects/arrays) or uses plain strings (for primitives)
-3. Sanitizes parsed objects to prevent prototype pollution
-4. Resets the form with the restored values
+2. Attempts to decode base64-encoded JSON values (for objects/arrays) or uses plain strings (for primitives)
+3. Falls back to plain JSON parsing for backward compatibility
+4. Sanitizes parsed objects to prevent prototype pollution
+5. Resets the form with the restored values
 
 ### Bidirectional Sync
 
@@ -250,17 +251,18 @@ On the first render, the hook:
 **Form → URL**: When form values change (after initial hydration), the hook:
 
 1. Debounces the updates to prevent excessive URL changes
-2. Serializes values (JSON for objects/arrays, strings for primitives)
+2. Serializes values (base64-encoded JSON for objects/arrays, plain strings for primitives)
 3. Updates the URL query parameters
 4. Preserves unrelated URL parameters
 5. Warns if URL length exceeds the maximum
 
 ### Value Serialization
 
-- **Primitives** (string, number, boolean): Converted to strings
-- **Objects and Arrays**: JSON stringified
+- **Primitives** (string, number, boolean): Converted to plain strings (no encoding)
+- **Objects and Arrays**: JSON stringified, then base64-encoded for cleaner URLs
 - **Empty Values** (null, undefined, empty string): Removed from URL
 - **Special Objects** (Date, RegExp, etc.): Converted to strings (not JSON)
+- **Backward Compatibility**: The hook can decode both base64-encoded JSON (new format) and plain JSON strings (legacy format)
 
 ### Security Features
 
